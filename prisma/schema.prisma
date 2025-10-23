@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  username      String
+  password      String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  recipes       Recipe[]
+  fridgeItems   FridgeItem[]
+  shoppingItems ShoppingItem[]
+  favorites     Favorite[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Recipe {
+  id                 Int          @id @default(autoincrement())
+  title              String
+  description        String?
+  imageUrl           String?
+  cookingTimeMinutes Int?
+  calories           Int?
+  servings           Int?
+  rating             Float?       @default(0)
+  externalId         Int?
+  externalSource     String?
+  authorId           Int
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  ingredients Ingredient[]
+  steps       RecipeStep[]
+  favorites   Favorite[]
+
+  @@unique([externalSource, externalId])
+  @@map("recipes")
+}
+
+model Ingredient {
+  id       Int     @id @default(autoincrement())
+  name     String
+  quantity Float?
+  unit     String?
+  recipeId Int
+
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("ingredients")
+}
+
+model RecipeStep {
+  id          Int    @id @default(autoincrement())
+  stepOrder   Int
+  description String
+  recipeId    Int
+
+  recipe      Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("steps")
+}
+
+model FridgeItem {
+  id        Int       @id @default(autoincrement())
+  name      String
+  quantity  String
+  category  String?
+  expiresAt DateTime?
+  userId    Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("fridge_items")
+}
+
+model ShoppingItem {
+  id        Int      @id @default(autoincrement())
+  name      String
+  quantity  String
+  checked   Boolean  @default(false)
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shopping_items")
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  recipeId  Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@map("favorites")
+}
