@@ -9,6 +9,8 @@ const fridgeRoutes = require('./routes/fridgeRoutes');
 const shoppingRoutes = require('./routes/shoppingRoutes');
 const favoritesRoutes = require('./routes/favoritesRoutes');
 
+const syncSequences = require('./utils/syncSequences');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -40,6 +42,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const startServer = async () => {
+  await syncSequences();
+
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+};
+
+startServer().catch((error) => {
+  console.error('Failed to start server', error);
+  process.exit(1);
 });
