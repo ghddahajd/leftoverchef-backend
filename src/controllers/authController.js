@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { Prisma } = require('@prisma/client');
 const prisma = require('../prismaClient');
 const { hashPassword, comparePassword } = require('../utils/password');
 const { generateAccessToken, calculateRefreshExpiry } = require('../utils/jwt');
@@ -114,7 +115,11 @@ const refresh = async (req, res, next) => {
     });
 
     if (!stored) {
-      return res.status(401).json({ message: 'Invalid refresh token' });
+      const tokensCount = await prisma.refreshToken.count();
+      if (tokensCount === 0) {
+        return res.status(503).json({ message: 'Authentication service temporarily unavailable. Please try again shortly.' });
+      }
+      return res.status(404).json({ message: 'Refresh token not found' });
     }
 
     if (stored.expiresAt < new Date()) {
@@ -134,6 +139,16 @@ const refresh = async (req, res, next) => {
       expiresIn: tokens.expiresIn,
     });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError ||
+      error instanceof Prisma.PrismaClientUnknownRequestError ||
+      error instanceof Prisma.PrismaClientInitializationError ||
+      error instanceof Prisma.PrismaClientRustPanicError
+    ) {
+      return res
+        .status(503)
+        .json({ message: 'Authentication service temporarily unavailable. Please try again shortly.' });
+    }
     next(error);
   }
 };

@@ -1,11 +1,28 @@
 const prisma = require('../prismaClient');
 
+const parseQuantity = (value) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeUnit = (value) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 const toModel = (item) => ({
   id: item.id,
   name: item.name,
   quantity: item.quantity,
-  unit: item.unit || null,
-  checked: item.checked,
+  unit: item.unit ?? null,
+  isCompleted: item.isCompleted,
   createdAt: item.createdAt.getTime(),
   updatedAt: item.updatedAt.getTime(),
 });
@@ -26,7 +43,7 @@ const getShoppingItems = async (req, res) => {
 
 const addShoppingItem = async (req, res) => {
   try {
-    const { name, quantity, unit } = req.body;
+    const { name, quantity, unit, isCompleted } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: 'Item name is required' });
@@ -35,8 +52,9 @@ const addShoppingItem = async (req, res) => {
     const item = await prisma.shoppingItem.create({
       data: {
         name,
-        quantity: quantity || '',
-        unit: unit || null,
+        quantity: parseQuantity(quantity),
+        unit: normalizeUnit(unit),
+        isCompleted: typeof isCompleted === 'boolean' ? isCompleted : false,
         userId: req.userId,
       },
     });
@@ -51,7 +69,7 @@ const addShoppingItem = async (req, res) => {
 const updateShoppingItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, quantity, unit, checked } = req.body;
+    const { name, quantity, unit, isCompleted } = req.body;
 
     const itemId = parseInt(id, 10);
     const existingItem = await prisma.shoppingItem.findUnique({ where: { id: itemId } });
@@ -68,9 +86,10 @@ const updateShoppingItem = async (req, res) => {
       where: { id: itemId },
       data: {
         name: name ?? existingItem.name,
-        quantity: quantity ?? existingItem.quantity,
-        unit: unit ?? existingItem.unit,
-        checked: typeof checked === 'boolean' ? checked : existingItem.checked,
+        quantity: quantity !== undefined ? parseQuantity(quantity) : existingItem.quantity,
+        unit: unit !== undefined ? normalizeUnit(unit) : existingItem.unit,
+        isCompleted:
+          typeof isCompleted === 'boolean' ? isCompleted : existingItem.isCompleted,
       },
     });
 
